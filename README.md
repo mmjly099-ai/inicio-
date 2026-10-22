@@ -1,11 +1,33 @@
-<div align="center">
+# تحليلات التسويق في المتاجر الكبرى - TOP STORE 🚀
+نظام متكامل لإدارة وتحليلات التسويق لمتجر **TOP STORE** («أسواق العالم بين يديك»).
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+---
 
-  <h1>Built with AI Studio</h2>
+## 🌐 طرق النشر المجانية (اختر الأسهل لك):
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+### الطريقة 1: النشر بالسحب والإفلات خلال دقيقة واحدة (بدون أوامر وبدون GitHub)
+1. في هذا المشروع تم بناء المجلد المجهز للنشر `dist`.
+2. ادخل إلى موقع [Netlify Drop](https://app.netlify.com/drop).
+3. اسحب مجلد `dist` وأفلته في الصفحة.
+4. مبروك! سيصبح لديك رابط موقع مباشر وخاص بك مجاناً مع شهادة SSL فوراً.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### الطريقة 2: عبر Vercel
+1. حمّل المشروع بصيغة ZIP من خيارات AI Studio.
+2. ادخل إلى [Vercel.com](https://vercel.com) وسجّل دخولك بحساب مجاني.
+3. اضغط **Add New Project** واختر المشروع.
+4. إعدادات البناء جاهزة مسبقاً:
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+5. اضغط **Deploy** وسيعمل الموقع فوراً.
 
-</div>
+### الطريقة 3: عبر GitHub Pages
+1. ارفع المشروع على مستودع في GitHub.
+2. تم ضبط `base: './'` في `vite.config.ts` بحيث يعمل الموقع بشكل تلقائي ومثالي على أي رابط في GitHub Pages دون مشاكل الروابط.
+
+---
+
+## 🛠️ أوامر التشغيل والبناء محلياً:
+- تثبيت الحزم: `npm install`
+- تشغيل التطبيق في بيئة التطوير: `npm run dev`
+- بناء الموقع للنشر: `npm run build`
+- معاينة الموقع بعد البناء: `npm run preview`
