@@ -15,6 +15,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type PageId =
   | 'dashboard'
@@ -188,8 +189,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </div>
 
-        {/* Bottom Store Slogan Card */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+        {/* PWA Download Button in Sidebar & Slogan Card */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50 space-y-2.5">
+          <PWAInstallButton variant="sidebar" />
+
           <div className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-xl p-3.5 shadow-sm">
             <div className="flex items-center gap-2 mb-1 text-amber-400">
               <Sparkles className="w-3.5 h-3.5" />

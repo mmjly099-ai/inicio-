@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -92,6 +93,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntr
 
         {/* Left side (in RTL): Actions & User profile */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* PWA Install Button */}
+          <PWAInstallButton variant="navbar" />
+
           {/* Quick Entry Action Button */}
           {canEdit && (
             <button

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { PWAInstallButton } from '../components/PWAInstallButton';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -100,6 +101,9 @@ export const SettingsView: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* PWA App Install Card */}
+      <PWAInstallButton variant="card" />
 
       {/* Brand Identity Card */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">

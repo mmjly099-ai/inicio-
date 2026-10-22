@@ -3,6 +3,7 @@ import { AppProvider } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar, PageId } from './components/Sidebar';
 import { QuickDataEntryModal, QuickEntryTab } from './components/QuickDataEntryModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 // Views
 import { DashboardView } from './views/DashboardView';
@@ -133,6 +134,9 @@ const MainLayout: React.FC = () => {
         preselectedCampaignId={preselectedCampaignId}
         onClose={() => setQuickEntryOpen(false)}
       />
+
+      {/* Offline Status Indicator */}
+      <OfflineIndicator />
     </div>
   );
 };

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Outer accent gold border -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-opacity="0.35" />
+
+  <!-- Inner circle accent -->
+  <circle cx="256" cy="256" r="186" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-dasharray="8 6" stroke-opacity="0.4" />
+
+  <!-- Shopping Bag outline & fill -->
+  <g filter="url(#shadow)">
+    <!-- Bag Handle -->
+    <path d="M 196 200 C 196 140, 316 140, 316 200" fill="none" stroke="url(#goldGrad)" stroke-width="18" stroke-linecap="round" />
+
+    <!-- Bag Body -->
+    <path d="M 148 200 L 364 200 L 344 400 L 168 400 Z" fill="#0B1324" stroke="url(#goldGrad)" stroke-width="14" stroke-linejoin="round" />
+
+    <!-- Chart Growth Bars inside bag -->
+    <!-- Left bar -->
+    <rect x="196" y="300" width="24" height="70" rx="6" fill="url(#goldGrad)" />
+    <!-- Center bar (blue) -->
+    <rect x="244" y="260" width="24" height="110" rx="6" fill="url(#blueGrad)" />
+    <!-- Right bar (highest) -->
+    <rect x="292" y="230" width="24" height="140" rx="6" fill="url(#goldGrad)" />
+
+    <!-- Trend line arrow connecting bars -->
+    <path d="M 208 285 L 256 245 L 304 215" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <polygon points="302,204 316,213 306,224" fill="#FFFFFF" />
+
+    <!-- Star Crown Icons on top -->
+    <circle cx="256" cy="106" r="14" fill="url(#goldGrad)" />
+    <circle cx="206" cy="116" r="9" fill="url(#goldGrad)" opacity="0.85" />
+    <circle cx="306" cy="116" r="9" fill="url(#goldGrad)" opacity="0.85" />
+  </g>
+
+  <!-- Brand Text -->
+  <text x="256" y="445" font-family="'Cairo', system-ui, sans-serif" font-weight="900" font-size="28" fill="#F8FAFC" text-anchor="middle" letter-spacing="4">TOP STORE</text>
+  <text x="256" y="475" font-family="'Cairo', system-ui, sans-serif" font-weight="700" font-size="14" fill="#94A3B8" text-anchor="middle">توب ستور • تسويق ذكي</text>
+</svg>
