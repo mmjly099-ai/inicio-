@@ -92,6 +92,14 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
   const [cntHook, setCntHook] = useState('');
   const [cntCreator, setCntCreator] = useState('');
   const [cntPublishDate, setCntPublishDate] = useState(new Date().toISOString().split('T')[0]);
+  const [cntViews, setCntViews] = useState<number | ''>('');
+  const [cntReach, setCntReach] = useState<number | ''>('');
+  const [cntLikes, setCntLikes] = useState<number | ''>('');
+  const [cntComments, setCntComments] = useState<number | ''>('');
+  const [cntShares, setCntShares] = useState<number | ''>('');
+  const [cntSaves, setCntSaves] = useState<number | ''>('');
+  const [cntMessages, setCntMessages] = useState<number | ''>('');
+  const [cntRevenue, setCntRevenue] = useState<number | ''>('');
 
   // 4. Lead Form
   const [leadName, setLeadName] = useState('');
@@ -224,22 +232,30 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
       creator: cntCreator,
       publishDate: cntPublishDate,
       status: 'published',
-      views: 0,
-      reach: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      saves: 0,
-      messages: 0,
+      views: Number(cntViews) || 0,
+      reach: Number(cntReach) || 0,
+      likes: Number(cntLikes) || 0,
+      comments: Number(cntComments) || 0,
+      shares: Number(cntShares) || 0,
+      saves: Number(cntSaves) || 0,
+      messages: Number(cntMessages) || 0,
       leads: 0,
       orders: 0,
-      revenue: 0,
+      revenue: Number(cntRevenue) || 0,
     });
 
     showNotification(`تمت إضافة المحتوى التسويقي "${cntTitle}" بنجاح!`);
     setCntTitle('');
     setCntHook('');
     setCntCreator('');
+    setCntViews('');
+    setCntReach('');
+    setCntLikes('');
+    setCntComments('');
+    setCntShares('');
+    setCntSaves('');
+    setCntMessages('');
+    setCntRevenue('');
   };
 
   const handleLeadSubmit = (e: React.FormEvent) => {
@@ -1136,6 +1152,59 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
                         onChange={e => setCntPublishDate(e.target.value)}
                         className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
                       />
+                    </div>
+                  </div>
+
+                  {/* Optional: Immediate Interaction & Analysis Input */}
+                  <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80 space-y-2.5">
+                    <span className="text-xs font-bold text-slate-800 block">
+                      إحصائيات التفاعل والتحليل (اختياري - يمكن تعبئتها الآن أو لاحقاً):
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[11px] text-slate-500 mb-1">المشاهدات</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          value={cntViews}
+                          onChange={e => setCntViews(e.target.value === '' ? '' : Number(e.target.value))}
+                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-500 mb-1">الإعجابات</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          value={cntLikes}
+                          onChange={e => setCntLikes(e.target.value === '' ? '' : Number(e.target.value))}
+                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-500 mb-1">التعليقات</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          value={cntComments}
+                          onChange={e => setCntComments(e.target.value === '' ? '' : Number(e.target.value))}
+                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-500 mb-1">المشاركات</label>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          value={cntShares}
+                          onChange={e => setCntShares(e.target.value === '' ? '' : Number(e.target.value))}
+                          className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+                        />
+                      </div>
                     </div>
                   </div>
 

@@ -13,24 +13,28 @@ import {
   Trash2,
   Sparkles,
   TrendingUp,
+  Edit3,
+  BarChart2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ContentItem, ContentType, Platform } from '../types';
 import { formatCurrency, formatNumber, calculateEngagementRate } from '../utils/calculations';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { EditContentMetricsModal } from '../components/EditContentMetricsModal';
 
 interface ContentViewProps {
   onOpenQuickEntry: (tab: any) => void;
 }
 
 export const ContentView: React.FC<ContentViewProps> = ({ onOpenQuickEntry }) => {
-  const { content, campaigns, softDeleteContent, canEdit, canDelete } = useApp();
+  const { content, campaigns, updateContent, softDeleteContent, canEdit, canDelete } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const [itemToDelete, setItemToDelete] = useState<ContentItem | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<ContentItem | null>(null);
 
   const activeContent = useMemo(() => {
     return content.filter(c => {
@@ -244,22 +248,44 @@ export const ContentView: React.FC<ContentViewProps> = ({ onOpenQuickEntry }) =>
                     صانع المحتوى: <strong className="text-slate-700">{item.creator || 'فريق المتجر'}</strong>
                   </span>
 
-                  {canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => setItemToDelete(item)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title="نقل إلى سلة المحذوفات"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setItemToEdit(item)}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-lg transition-colors cursor-pointer"
+                        title="تحديث المشاهدات والإعجابات والتعليقات والمبيعات"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                        <span>تعديل التحليل والتفاعل</span>
+                      </button>
+                    )}
+
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => setItemToDelete(item)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="نقل إلى سلة المحذوفات"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Edit Content & Interaction Metrics Modal */}
+      <EditContentMetricsModal
+        item={itemToEdit}
+        isOpen={!!itemToEdit}
+        onClose={() => setItemToEdit(null)}
+        onSave={(id, updates) => updateContent(id, updates)}
+      />
 
       {/* Confirmation Modal */}
       <ConfirmModal
