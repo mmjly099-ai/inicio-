@@ -54,6 +54,7 @@ export const ContentView: React.FC<ContentViewProps> = ({ onOpenQuickEntry }) =>
       carousel: 'كاروسيل (Carousel)',
       story: 'ستوري (Story)',
       video: 'فيديو إعلاني (Video)',
+      ad: 'إعلان ممول (Ad)',
       post: 'بوست (Post)',
       other: 'أخرى',
     };

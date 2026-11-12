@@ -59,6 +59,7 @@ export const AnalyticsView: React.FC = () => {
         snapchat: 'سناب شات (Snapchat)',
         whatsapp: 'واتساب (WhatsApp)',
         facebook: 'فيسبوك (Facebook)',
+        twitter: 'إكس (Twitter)',
         google: 'إعلانات جوجل',
         other: 'أخرى',
       };

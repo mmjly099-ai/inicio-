@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { AppProvider } from './context/AppContext';
+import { useApp, AppProvider } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar, PageId } from './components/Sidebar';
 import { QuickDataEntryModal, QuickEntryTab } from './components/QuickDataEntryModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 // Views
 import { DashboardView } from './views/DashboardView';
@@ -19,6 +20,7 @@ import { AuditView } from './views/AuditView';
 import { SettingsView } from './views/SettingsView';
 
 const MainLayout: React.FC = () => {
+  const { canEdit } = useApp();
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -121,11 +123,20 @@ const MainLayout: React.FC = () => {
         {/* Main Content Area */}
         <main
           id="main-content-view"
-          className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 transition-all overflow-y-auto"
+          className="flex-1 p-3.5 sm:p-6 lg:p-8 min-w-0 transition-all overflow-y-auto pb-24 lg:pb-8"
         >
           {renderActiveView()}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Shown on phones/tablets) */}
+      <MobileBottomNav
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
+        onOpenQuickEntry={() => handleOpenQuickEntry('daily_metric')}
+        onOpenMobileMenu={() => setIsSidebarOpen(true)}
+        canEdit={canEdit}
+      />
 
       {/* Global Quick Data Entry Modal */}
       <QuickDataEntryModal

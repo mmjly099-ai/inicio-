@@ -16,6 +16,7 @@ export type Platform =
   | 'tiktok'
   | 'whatsapp'
   | 'snapchat'
+  | 'twitter'
   | 'google'
   | 'other';
 
@@ -75,6 +76,7 @@ export type ContentType =
   | 'post'
   | 'carousel'
   | 'video'
+  | 'ad'
   | 'other';
 
 export interface ContentItem {
@@ -199,9 +201,12 @@ export type PlanItemStatus =
   | 'ready'         // جاهز للنشر
   | 'published';    // تم النشر
 
+export type PlanItemPriority = 'high' | 'medium' | 'low';
+
 export interface MarketingPlanItem {
   id: string;
   date: string;            // YYYY-MM-DD
+  time?: string;           // HH:mm (وقت النشر المجدول)
   title: string;
   platform: Platform;
   campaignId?: string;
@@ -209,6 +214,8 @@ export interface MarketingPlanItem {
   contentType: ContentType;
   assignedTo: string;      // المسؤول
   status: PlanItemStatus;
+  priority?: PlanItemPriority;
+  targetGoal?: string;     // الهدف (مبيعات، تفاعل، توعية، رسائل)
   notes?: string;
   created_at: string;
   updated_at: string;

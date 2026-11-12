@@ -117,6 +117,10 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
   const [planHook, setPlanHook] = useState('');
   const [planAssignedTo, setPlanAssignedTo] = useState('');
   const [planStatus, setPlanStatus] = useState<PlanItemStatus>('idea');
+  const [planTime, setPlanTime] = useState('18:00');
+  const [planPriority, setPlanPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [planGoal, setPlanGoal] = useState('مبيعات فورية');
+  const [planCampaignId, setPlanCampaignId] = useState('');
 
   // 7. Order Form
   const [ordCustomerName, setOrdCustomerName] = useState('');
@@ -291,14 +295,18 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
     addPlanItem({
       title: planTitle.trim(),
       date: planDate,
+      time: planTime || undefined,
       platform: planPlatform,
       contentType: planContentType,
+      campaignId: planCampaignId || undefined,
       hook: planHook,
       assignedTo: planAssignedTo || 'فريق التسويق',
       status: planStatus,
+      priority: planPriority,
+      targetGoal: planGoal || undefined,
     });
 
-    showNotification(`تمت إضافة الفكرة إلى الخطة التسويقية بنجاح!`);
+    showNotification(`تمت إضافة المهمة إلى خطة التسويق والجدولة بنجاح!`);
     setPlanTitle('');
     setPlanHook('');
     setPlanAssignedTo('');
@@ -1279,7 +1287,7 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-slate-600 mb-1.5">
                         تاريخ النشر المستهدف
@@ -1288,6 +1296,17 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
                         type="date"
                         value={planDate}
                         onChange={e => setPlanDate(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                        وقت النشر
+                      </label>
+                      <input
+                        type="time"
+                        value={planTime}
+                        onChange={e => setPlanTime(e.target.value)}
                         className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
                       />
                     </div>
@@ -1304,8 +1323,43 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
                         <option value="instagram">انستغرام</option>
                         <option value="whatsapp">واتساب</option>
                         <option value="snapchat">سناب شات</option>
+                        <option value="twitter">إكس (Twitter)</option>
                         <option value="facebook">فيسبوك</option>
                         <option value="other">أخرى</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                        الأولوية
+                      </label>
+                      <select
+                        value={planPriority}
+                        onChange={e => setPlanPriority(e.target.value as any)}
+                        className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                      >
+                        <option value="high">عالية (High 🔥)</option>
+                        <option value="medium">متوسطة (Medium)</option>
+                        <option value="low">منخفضة (Low)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                        نوع المحتوى
+                      </label>
+                      <select
+                        value={planContentType}
+                        onChange={e => setPlanContentType(e.target.value as ContentType)}
+                        className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                      >
+                        <option value="reel">فيديو ريلز (Reel)</option>
+                        <option value="carousel">كاروسيل صور (Carousel)</option>
+                        <option value="story">ستوري تفاعلي (Story)</option>
+                        <option value="video">فيديو إعلاني (Video)</option>
+                        <option value="post">بوست عادي (Post)</option>
+                        <option value="other">نوع آخر</option>
                       </select>
                     </div>
                     <div>
@@ -1320,6 +1374,36 @@ export const QuickDataEntryModal: React.FC<QuickDataEntryModalProps> = ({
                         className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                        الهدف التسويقي
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="مثال: مبيعات، تفاعل، توعية"
+                        value={planGoal}
+                        onChange={e => setPlanGoal(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                      الحملة المرتبطة (اختياري)
+                    </label>
+                    <select
+                      value={planCampaignId}
+                      onChange={e => setPlanCampaignId(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                    >
+                      <option value="">محتوى عام مستقل</option>
+                      {activeCampaigns.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="pt-2 flex justify-end">

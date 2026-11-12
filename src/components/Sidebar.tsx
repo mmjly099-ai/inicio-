@@ -139,9 +139,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         }`}
       >
+        {/* Mobile Header with Close Button */}
+        <div className="lg:hidden p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-950 text-amber-400 flex items-center justify-center font-black text-sm">
+              TOP
+            </div>
+            <span className="font-extrabold text-sm text-slate-900">أقسام TOP STORE</span>
+          </div>
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+            title="إغلاق"
+          >
+            ✕
+          </button>
+        </div>
+
         {/* Navigation list */}
         <div className="p-3 overflow-y-auto flex-1 space-y-1 scrollbar-thin">
-          <div className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden lg:block">
             أقسام النظام الرئيسية
           </div>
 

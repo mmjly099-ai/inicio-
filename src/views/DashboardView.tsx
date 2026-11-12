@@ -180,7 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         </div>
 
         {/* Period Selector Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 self-start md:self-auto">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 w-full sm:w-auto overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => setPeriod('today')}
