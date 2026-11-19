@@ -25,10 +25,9 @@ const MainLayout: React.FC = () => {
   const {
     canEdit,
     authLoading,
-    firebaseUser,
+    isAuthenticated,
     authError,
-    signInWithGoogle,
-    signInWithRedirectFallback,
+    unlockWithPassword,
     signingIn,
   } = useApp();
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
@@ -39,13 +38,12 @@ const MainLayout: React.FC = () => {
   const [quickEntryTab, setQuickEntryTab] = useState<QuickEntryTab>('daily_metric');
   const [preselectedCampaignId, setPreselectedCampaignId] = useState<string | undefined>(undefined);
 
-  if (authLoading || !firebaseUser) {
+  if (authLoading || !isAuthenticated) {
     return (
       <AuthGate
         loading={authLoading}
         error={authError}
-        onSignIn={signInWithGoogle}
-        onSignInRedirect={signInWithRedirectFallback}
+        onUnlock={unlockWithPassword}
         signingIn={signingIn}
       />
     );

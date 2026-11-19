@@ -125,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntr
           {/* Live Cloud Sync Status */}
           {renderSyncBadge()}
 
-          {/* Authenticated Google User Profile */}
+          {/* Workspace Profile Menu */}
           <div className="relative">
             <button
               type="button"
@@ -133,25 +133,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntr
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-all cursor-pointer"
             >
-              {currentUser.avatar ? (
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  referrerPolicy="no-referrer"
-                  className="w-7 h-7 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-lg bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-xs">
-                  {currentUser.name.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <div className="w-7 h-7 rounded-lg bg-slate-900 text-amber-400 flex items-center justify-center font-black text-xs">
+                T
+              </div>
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-slate-900 leading-tight max-w-[120px] truncate">
                   {currentUser.name}
                 </p>
                 <p className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
-                  <span>حساب متزامن</span>
+                  <span>جلسة متزامنة</span>
                 </p>
               </div>
             </button>
@@ -163,12 +154,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntr
               >
                 <div className="px-2 py-2 mb-2 border-b border-slate-100">
                   <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
-                  <p className="text-[11px] text-slate-500 break-all">{currentUser.email}</p>
+                  <p className="text-[11px] text-slate-500">مساحة عمل TOP STORE السحابية</p>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-900 mb-2 flex items-start gap-2">
                   <Smartphone className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <span>سجّل الدخول بنفس البريد على أي هاتف أو جهاز لمزامنة جميع بيانات متجرك فوراً.</span>
+                  <span>أدخل نفس كلمة المرور على أي هاتف أو جهاز لمزامنة جميع بيانات متجرك فوراً.</span>
                 </div>
 
                 <button
@@ -176,12 +167,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntr
                   id="sign-out-btn"
                   onClick={() => {
                     setUserMenuOpen(false);
-                    void logoutUser();
+                    logoutUser();
                   }}
                   className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>تسجيل الخروج</span>
+                  <span>قفل التطبيق / تسجيل الخروج</span>
                 </button>
               </div>
             )}

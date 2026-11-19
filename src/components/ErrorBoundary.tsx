@@ -71,7 +71,7 @@ export class ErrorBoundary extends React.Component<
               </h2>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 {this.state.isPermissionError
-                  ? 'يرجى التأكد من تسجيل الدخول بحساب Google المصرّح به والتحقق من اتصال الإنترنت ثم إعادة المحاولة.'
+                  ? 'يرجى التأكد من تسجيل الدخول بكلمة مرور المتجر والتحقق من اتصال الإنترنت ثم إعادة المحاولة.'
                   : 'تم رصد خطأ تقني مؤقت أثناء معالجة البيانات.'}
               </p>
             </div>

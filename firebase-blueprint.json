@@ -1,35 +1,5 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "User workspace pointer without sensitive PII.",
-      "type": "object",
-      "properties": {
-        "uid": {
-          "type": "string",
-          "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
-        },
-        "displayName": {
-          "type": "string",
-          "maxLength": 120
-        },
-        "activeWorkspaceId": {
-          "type": "string",
-          "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": ["uid", "displayName", "activeWorkspaceId", "createdAt", "updatedAt"]
-    },
     "Workspace": {
       "title": "Workspace",
       "description": "TOP STORE workspace container owned by the authenticated user.",
@@ -492,10 +462,6 @@
     }
   },
   "firestore": {
-    "/userProfiles/{userId}": {
-      "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Private user profile pointing to their active TOP STORE workspace."
-    },
     "/workspaces/{workspaceId}": {
       "schema": { "$ref": "#/entities/Workspace" },
       "description": "Store workspace root owned by user."

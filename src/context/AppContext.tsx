@@ -14,15 +14,11 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import {
-  auth,
   db,
-  googleProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut,
-  onAuthStateChanged,
-  FirebaseUser,
+  verifyWorkspacePassword,
+  getSavedWorkspaceId,
+  saveWorkspaceSession,
+  clearWorkspaceSession,
   OperationType,
   handleFirestoreError,
 } from '../firebase';
@@ -51,14 +47,13 @@ import {
 export type SyncStatus = 'connecting' | 'synced' | 'syncing' | 'offline' | 'error';
 
 interface AppContextType {
-  // Firebase Auth & Sync State
-  firebaseUser: FirebaseUser | null;
+  // Password Auth & Sync State
+  isAuthenticated: boolean;
   authLoading: boolean;
   authError: string | null;
   signingIn: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithRedirectFallback: () => Promise<void>;
-  logoutUser: () => Promise<void>;
+  unlockWithPassword: (password: string) => Promise<void>;
+  logoutUser: () => void;
   syncStatus: SyncStatus;
   workspaceId: string | null;
 
@@ -216,7 +211,7 @@ const sortByDateDesc = <T extends { created_at?: string; timestamp?: string }>(i
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState<boolean>(false);
@@ -277,133 +272,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
 
-  const formatAuthError = useCallback((err: unknown): string | null => {
-    const authErr = err as { code?: string; message?: string };
-    const code = authErr?.code || '';
-    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-
-    if (code === 'auth/cancelled-popup-request') {
-      return null;
-    }
-    if (code === 'auth/popup-closed-by-user') {
-      return 'تم إغلاق نافذة تسجيل الدخول قبل الإتمام. يمكنك المحاولة مرة أخرى أو استخدام الدخول المباشر للجوال.';
-    }
-    if (code === 'auth/popup-blocked') {
-      return 'المتصفح يحظر النوافذ المنبثقة على هذا الجهاز. استخدم زر "الدخول المباشر للجوال" بالأسفل أو افتح التطبيق في متصفح Chrome.';
-    }
-    if (code === 'auth/unauthorized-domain') {
-      return `النطاق الحالي (${hostname}) غير مضاف ضمن النطاقات المصرح بها في إعدادات Firebase Auth (Authorized Domains).`;
-    }
-    if (code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/web-storage-unsupported') {
-      return 'المتصفح الحالي أو وضع التشغيل لا يدعم نوافذ تسجيل الدخول المنبثقة. افتح التطبيق مباشرة في متصفح Chrome أو استخدم الدخول المباشر.';
-    }
-    if (code === 'auth/network-request-failed') {
-      return 'تعذر الاتصال بخوادم Google. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.';
-    }
-    if (code === 'auth/operation-not-allowed') {
-      return 'تسجيل الدخول عبر Google غير مفعّل في مشروع Firebase الحالي.';
-    }
-    const detail = code || (authErr?.message ? authErr.message.slice(0, 80) : 'خطأ غير معروف');
-    return `تعذر تسجيل الدخول عبر Google (${detail}). جرّب الدخول المباشر للجوال أو افتح التطبيق في متصفح Chrome.`;
-  }, []);
-
-  // Process any pending OAuth redirect result on startup
-  useEffect(() => {
-    let active = true;
-    getRedirectResult(auth).catch(err => {
-      if (!active) return;
-      const formatted = formatAuthError(err);
-      if (formatted) setAuthError(formatted);
-    });
-    return () => {
-      active = false;
-    };
-  }, [formatAuthError]);
-
-  // Listen to Firebase Auth state and bootstrap workspace/profile
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async user => {
-      if (!user) {
-        setFirebaseUser(null);
-        setWorkspaceId(null);
-        setWorkspaceReady(false);
-        setCampaigns([]);
-        setMetrics([]);
-        setContent([]);
-        setLeads([]);
-        setCustomers([]);
-        setOrders([]);
-        setExpenses([]);
-        setPlanItems([]);
-        setAuditLogs([]);
-        setAuthLoading(false);
-        setSyncStatus('connecting');
-        return;
-      }
-
-      if (!user.emailVerified) {
-        setAuthError('يرجى استخدام حساب Google مفعّل البريد الإلكتروني للمتابعة.');
-        setFirebaseUser(null);
-        setAuthLoading(false);
-        return;
-      }
-
-      setAuthError(null);
-      setFirebaseUser(user);
-      setSyncStatus(navigator.onLine ? 'connecting' : 'offline');
-
-      const uid = user.uid;
-      const displayName = clampStr(user.displayName || user.email || 'مدير المتجر', 120, 'مدير المتجر');
-      const wsRef = doc(db, 'workspaces', uid);
-      const profileRef = doc(db, 'userProfiles', uid);
-
+  const bootstrapWorkspace = useCallback(
+    async (wsId: string): Promise<boolean> => {
+      const wsRef = doc(db, 'workspaces', wsId);
+      let wsSnap;
       try {
-        const wsSnap = await getDoc(wsRef);
-        if (!wsSnap.exists()) {
+        wsSnap = await getDoc(wsRef);
+      } catch (err) {
+        reportFirestoreError(err, OperationType.GET, `workspaces/${wsId}`);
+        return false;
+      }
+
+      if (!wsSnap.exists()) {
+        try {
           await setDoc(wsRef, {
-            id: uid,
-            ownerUid: uid,
+            id: wsId,
+            ownerUid: wsId,
             storeName: 'TOP STORE | توب ستور',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
+        } catch (err) {
+          reportFirestoreError(err, OperationType.CREATE, `workspaces/${wsId}`);
+          return false;
         }
-      } catch (err) {
-        reportFirestoreError(err, OperationType.WRITE, `workspaces/${uid}`);
-        setAuthLoading(false);
+      }
+      return true;
+    },
+    [reportFirestoreError]
+  );
+
+  // Restore saved password session on mount
+  useEffect(() => {
+    let active = true;
+    const initSession = async () => {
+      const savedWsId = getSavedWorkspaceId();
+      if (!savedWsId) {
+        if (active) {
+          setIsAuthenticated(false);
+          setWorkspaceId(null);
+          setWorkspaceReady(false);
+          setAuthLoading(false);
+        }
         return;
       }
 
-      try {
-        const profileSnap = await getDoc(profileRef);
-        if (!profileSnap.exists()) {
-          await setDoc(profileRef, {
-            uid,
-            displayName,
-            activeWorkspaceId: uid,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-        }
-      } catch (err) {
-        reportFirestoreError(err, OperationType.WRITE, `userProfiles/${uid}`);
-        setAuthLoading(false);
-        return;
-      }
+      setSyncStatus(navigator.onLine ? 'connecting' : 'offline');
+      const ok = await bootstrapWorkspace(savedWsId);
+      if (!active) return;
 
-      setWorkspaceId(uid);
-      setWorkspaceReady(true);
+      if (ok) {
+        setIsAuthenticated(true);
+        setWorkspaceId(savedWsId);
+        setWorkspaceReady(true);
+      } else {
+        setIsAuthenticated(false);
+        setWorkspaceId(null);
+        setWorkspaceReady(false);
+      }
       setAuthLoading(false);
-    });
+    };
 
-    return () => unsubscribeAuth();
-  }, [reportFirestoreError]);
+    void initSession();
+    return () => {
+      active = false;
+    };
+  }, [bootstrapWorkspace]);
 
   // Subscribe to all 9 Firestore collections in real time
   useEffect(() => {
-    if (!firebaseUser || !workspaceId || !workspaceReady) return;
+    if (!isAuthenticated || !workspaceId || !workspaceReady) return;
 
-    const uid = firebaseUser.uid;
     const unsubscribers: Array<() => void> = [];
 
     const subscribeCol = <T extends { created_at?: string; timestamp?: string }>(
@@ -411,7 +350,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setter: React.Dispatch<React.SetStateAction<T[]>>
     ) => {
       const path = `workspaces/${workspaceId}/${colName}`;
-      const q = query(collection(db, 'workspaces', workspaceId, colName), where('ownerUid', '==', uid));
+      const q = query(collection(db, 'workspaces', workspaceId, colName), where('ownerUid', '==', workspaceId));
       const unsub = onSnapshot(
         q,
         { includeMetadataChanges: true },
@@ -446,76 +385,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       unsubscribers.forEach(fn => fn());
     };
-  }, [firebaseUser, workspaceId, workspaceReady, reportFirestoreError]);
+  }, [isAuthenticated, workspaceId, workspaceReady, reportFirestoreError]);
 
-  const signInWithRedirectFallback = async () => {
-    const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-    if (isInIframe) {
-      setAuthError('الدخول المباشر غير متاح داخل نافذة المعاينة المدمجة. اضغط على "فتح في متصفح Chrome" بالأسفل لإتمام الدخول بسهولة.');
-      return;
-    }
+  const unlockWithPassword = async (password: string) => {
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithRedirect(auth, googleProvider);
-    } catch (err: unknown) {
-      const formatted = formatAuthError(err);
-      if (formatted) setAuthError(formatted);
-      setSigningIn(false);
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    setSigningIn(true);
-    setAuthError(null);
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code || '';
-      const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-
-      // On mobile Chrome / standalone PWA, automatically fall back to redirect when popups are blocked
-      if (
-        !isInIframe &&
-        (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment')
-      ) {
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirectErr: unknown) {
-          const formattedRedirect = formatAuthError(redirectErr);
-          if (formattedRedirect) setAuthError(formattedRedirect);
-          return;
-        }
+      const wsId = await verifyWorkspacePassword(password);
+      if (!wsId) {
+        setAuthError('كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.');
+        return;
       }
 
-      const formatted = formatAuthError(err);
-      if (formatted) setAuthError(formatted);
+      setSyncStatus(navigator.onLine ? 'connecting' : 'offline');
+      const ok = await bootstrapWorkspace(wsId);
+      if (!ok) return;
+
+      saveWorkspaceSession(wsId);
+      setIsAuthenticated(true);
+      setWorkspaceId(wsId);
+      setWorkspaceReady(true);
     } finally {
       setSigningIn(false);
     }
   };
 
-  const logoutUser = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error('Sign out error', err);
-    }
+  const logoutUser = () => {
+    clearWorkspaceSession();
+    setIsAuthenticated(false);
+    setWorkspaceId(null);
+    setWorkspaceReady(false);
+    setCampaigns([]);
+    setMetrics([]);
+    setContent([]);
+    setLeads([]);
+    setCustomers([]);
+    setOrders([]);
+    setExpenses([]);
+    setPlanItems([]);
+    setAuditLogs([]);
+    setAuthError(null);
+    setSyncStatus('connecting');
   };
 
-  // Authenticated user info
+  // Authenticated workspace owner info
   const currentUser: User = {
-    id: firebaseUser?.uid || 'guest',
-    name: clampStr(firebaseUser?.displayName || firebaseUser?.email || 'مدير المتجر', 120, 'مدير المتجر'),
-    email: firebaseUser?.email || '',
+    id: workspaceId || 'guest',
+    name: 'مدير المتجر',
+    email: '',
     role: 'admin',
-    avatar: firebaseUser?.photoURL || undefined,
   };
 
-  const isAdmin = Boolean(firebaseUser);
-  const canEdit = Boolean(firebaseUser && workspaceReady);
-  const canDelete = Boolean(firebaseUser && workspaceReady);
+  const isAdmin = isAuthenticated;
+  const canEdit = Boolean(isAuthenticated && workspaceReady);
+  const canDelete = Boolean(isAuthenticated && workspaceReady);
 
   // Write helpers
   const persistCreate = useCallback(
@@ -550,7 +473,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       targetTitle: string,
       details: string
     ) => {
-      if (!firebaseUser || !workspaceId) return;
+      if (!isAuthenticated || !workspaceId) return;
       const id = makeId('aud');
       const nowIso = new Date().toISOString();
       const newLog: AuditLog = {
@@ -566,12 +489,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       persistCreate('auditLogs', id, {
         ...newLog,
-        ownerUid: firebaseUser.uid,
+        ownerUid: workspaceId,
         workspaceId,
         createdAt: serverTimestamp(),
       });
     },
-    [firebaseUser, workspaceId, currentUser.name, persistCreate]
+    [isAuthenticated, workspaceId, currentUser.name, persistCreate]
   );
 
   // 1. CAMPAIGNS CRUD
@@ -597,13 +520,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'campaigns',
         id,
         stripUndefined({
           ...newCampaign,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -704,13 +627,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'metrics',
         id,
         stripUndefined({
           ...newMetric,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -805,13 +728,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'content',
         id,
         stripUndefined({
           ...newItem,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -894,13 +817,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'leads',
         id,
         stripUndefined({
           ...newLead,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -983,13 +906,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'customers',
         newCustId,
         stripUndefined({
           ...newCustomer,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1005,7 +928,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     let newOrder: MarketingOrder | undefined;
-    if (initialAmount > 0 && firebaseUser && workspaceId) {
+    if (initialAmount > 0 && isAuthenticated && workspaceId) {
       const ordId = makeId('ord');
       newOrder = {
         id: ordId,
@@ -1029,7 +952,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ordId,
         stripUndefined({
           ...newOrder,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1072,13 +995,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'customers',
         id,
         stripUndefined({
           ...newCust,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1155,13 +1078,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'orders',
         id,
         stripUndefined({
           ...newOrder,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1254,13 +1177,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'expenses',
         id,
         stripUndefined({
           ...newExp,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1335,13 +1258,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleted_at: null,
     };
 
-    if (firebaseUser && workspaceId) {
+    if (isAuthenticated && workspaceId) {
       persistCreate(
         'planItems',
         id,
         stripUndefined({
           ...newItem,
-          ownerUid: firebaseUser.uid,
+          ownerUid: workspaceId,
           workspaceId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1433,12 +1356,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const importBackupJSON = async (jsonString: string): Promise<boolean> => {
-    if (!firebaseUser || !workspaceId) return false;
+    if (!isAuthenticated || !workspaceId) return false;
     try {
       const data = JSON.parse(jsonString);
       if (!data || typeof data !== 'object') return false;
 
-      const uid = firebaseUser.uid;
+      const uid = workspaceId;
       const nowIso = new Date().toISOString();
       const writes: Array<{ col: string; id: string; payload: Record<string, unknown> }> = [];
 
@@ -1722,8 +1645,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const clearAllWorkspaceData = async () => {
-    if (!firebaseUser || !workspaceId) return;
-    const uid = firebaseUser.uid;
+    if (!isAuthenticated || !workspaceId) return;
+    const uid = workspaceId;
     const collectionsToClear = [
       'campaigns',
       'metrics',
@@ -1761,12 +1684,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
-        firebaseUser,
+        isAuthenticated,
         authLoading,
         authError,
         signingIn,
-        signInWithGoogle,
-        signInWithRedirectFallback,
+        unlockWithPassword,
         logoutUser,
         syncStatus,
         workspaceId,

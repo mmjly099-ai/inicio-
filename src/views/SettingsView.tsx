@@ -117,9 +117,9 @@ export const SettingsView: React.FC = () => {
             </span>
           </div>
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-400 block mb-1">الحساب المتزامن</span>
-            <span className="font-extrabold text-slate-900 text-sm break-all">
-              {currentUser.email || currentUser.name}
+            <span className="text-slate-400 block mb-1">نظام الدخول والمزامنة</span>
+            <span className="font-extrabold text-slate-900 text-sm">
+              TOP STORE • محمي بكلمة المرور
             </span>
           </div>
           <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100">
@@ -128,7 +128,7 @@ export const SettingsView: React.FC = () => {
               مزامنة الهواتف الأخرى
             </span>
             <span className="text-slate-700 text-xs font-semibold leading-relaxed block">
-              افتح التطبيق على أي هاتف وسجّل بنفس البريد لمزامنة كل البيانات فوراً.
+              افتح التطبيق على أي هاتف وأدخل كلمة المرور لمزامنة كل البيانات فوراً.
             </span>
           </div>
         </div>

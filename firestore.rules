@@ -20,16 +20,12 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    function authorizedWorkspaceId() {
+      return 'ws-af333569a87c9a30972c8da8e6ca4212';
     }
 
-    function isVerifiedUser() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
-    function isAdmin() {
-      return isVerifiedUser() && request.auth.token.email == 'malkamynaldyny@gmail.com';
+    function isAuthorizedWorkspace(workspaceId) {
+      return isValidId(workspaceId) && workspaceId == authorizedWorkspaceId();
     }
 
     function isValidString(val, minLen, maxLen) {
@@ -55,15 +51,15 @@ service cloud.firestore {
     function hasValidBaseOwnership(data, docId, workspaceId) {
       return isValidId(docId)
         && data.id == docId
-        && isValidId(workspaceId)
+        && isAuthorizedWorkspace(workspaceId)
         && data.workspaceId == workspaceId
         && isValidId(data.ownerUid)
-        && data.ownerUid == request.auth.uid;
+        && data.ownerUid == workspaceId;
     }
 
     function workspaceExistsAndOwned(workspaceId) {
       return exists(/databases/$(database)/documents/workspaces/$(workspaceId))
-        && get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerUid == request.auth.uid;
+        && get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerUid == workspaceId;
     }
 
     function hasImmutableBaseOnUpdate(workspaceId) {
@@ -78,23 +74,12 @@ service cloud.firestore {
     }
 
     // 3. Entity Validation Blueprints
-    function isValidUserProfile(data, userId) {
-      return data.keys().hasAll(['uid', 'displayName', 'activeWorkspaceId', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['uid', 'displayName', 'activeWorkspaceId', 'createdAt', 'updatedAt'])
-        && isValidId(data.uid)
-        && data.uid == userId
-        && data.uid == request.auth.uid
-        && isValidString(data.displayName, 1, 120)
-        && isValidId(data.activeWorkspaceId);
-    }
-
     function isValidWorkspace(data, workspaceId) {
       return data.keys().hasAll(['id', 'ownerUid', 'storeName', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['id', 'ownerUid', 'storeName', 'createdAt', 'updatedAt'])
-        && isValidId(data.id)
+        && isAuthorizedWorkspace(workspaceId)
         && data.id == workspaceId
-        && isValidId(data.ownerUid)
-        && data.ownerUid == request.auth.uid
+        && data.ownerUid == workspaceId
         && isValidString(data.storeName, 1, 120);
     }
 
@@ -355,68 +340,44 @@ service cloud.firestore {
         && isValidString(data.timestamp, 1, 64);
     }
 
-    // 4. Connection check endpoint (get-only, no list/write)
+    // 4. Connection check endpoint (get-only on fixed test document)
     match /test/connection {
-      allow get: if isSignedIn();
+      allow get: if true;
     }
 
-    // 5. User Profile pointer (Strictly owner or verified admin)
-    match /userProfiles/{userId} {
-      allow get: if isVerifiedUser() && isValidId(userId) && (userId == request.auth.uid || isAdmin());
-      allow list: if isVerifiedUser() && (existing().uid == request.auth.uid || isAdmin());
-      allow create: if isVerifiedUser()
-        && isValidId(userId)
-        && isValidUserProfile(incoming(), userId)
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(userId)
-        && isValidUserProfile(incoming(), userId)
-        && existing().uid == request.auth.uid
-        && incoming().uid == existing().uid
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'activeWorkspaceId', 'updatedAt']);
-      allow delete: if isAdmin() && isValidId(userId);
-    }
-
-    // 6. Workspaces & Nested Marketing Collections
+    // 5. Keyed Store Workspace & Nested Marketing Collections
     match /workspaces/{workspaceId} {
-      allow get: if isVerifiedUser() && isValidId(workspaceId) && (existing().ownerUid == request.auth.uid || isAdmin());
-      allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-      allow create: if isVerifiedUser()
-        && isValidId(workspaceId)
-        && workspaceId == request.auth.uid
+      allow get: if isAuthorizedWorkspace(workspaceId) && (resource == null || existing().ownerUid == workspaceId);
+      allow list: if false;
+      allow create: if isAuthorizedWorkspace(workspaceId)
         && isValidWorkspace(incoming(), workspaceId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(workspaceId)
+      allow update: if isAuthorizedWorkspace(workspaceId)
         && isValidWorkspace(incoming(), workspaceId)
-        && (existing().ownerUid == request.auth.uid || isAdmin())
+        && existing().ownerUid == workspaceId
         && incoming().id == existing().id
         && incoming().ownerUid == existing().ownerUid
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly(['storeName', 'updatedAt']);
-      allow delete: if isAdmin() && isValidId(workspaceId);
+      allow delete: if false;
 
       // Campaigns
       match /campaigns/{campaignId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(campaignId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(campaignId)
           && isValidCampaign(incoming(), campaignId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(campaignId)
           && isValidCampaign(incoming(), campaignId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
           && (
-            isAdmin() ||
             (
               existing().status != 'completed' &&
               incoming().diff(existing()).affectedKeys().hasOnly([
@@ -426,79 +387,72 @@ service cloud.firestore {
             ) ||
             incoming().diff(existing()).affectedKeys().hasOnly(['deleted_at', 'updated_at', 'updatedAt'])
           );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(campaignId)
+          && existing().ownerUid == workspaceId;
       }
 
       // Daily Metrics
       match /metrics/{metricId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(metricId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(metricId)
           && isValidMetric(incoming(), metricId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(metricId)
           && isValidMetric(incoming(), metricId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
-          && (
-            isAdmin() ||
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'campaignId', 'date', 'spend', 'reach', 'impressions', 'clicks',
-              'messages', 'leads', 'newCustomers', 'orders', 'revenue', 'notes',
-              'updated_at', 'deleted_at', 'updatedAt'
-            ])
-          );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'campaignId', 'date', 'spend', 'reach', 'impressions', 'clicks',
+            'messages', 'leads', 'newCustomers', 'orders', 'revenue', 'notes',
+            'updated_at', 'deleted_at', 'updatedAt'
+          ]);
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(metricId)
+          && existing().ownerUid == workspaceId;
       }
 
       // Content Items
       match /content/{contentId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(contentId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(contentId)
           && isValidContentItem(incoming(), contentId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(contentId)
           && isValidContentItem(incoming(), contentId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
-          && (
-            isAdmin() ||
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'title', 'campaignId', 'platform', 'type', 'hook', 'creator',
-              'publishDate', 'status', 'views', 'reach', 'likes', 'comments',
-              'shares', 'saves', 'messages', 'leads', 'orders', 'revenue', 'url',
-              'updated_at', 'deleted_at', 'updatedAt'
-            ])
-          );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'campaignId', 'platform', 'type', 'hook', 'creator',
+            'publishDate', 'status', 'views', 'reach', 'likes', 'comments',
+            'shares', 'saves', 'messages', 'leads', 'orders', 'revenue', 'url',
+            'updated_at', 'deleted_at', 'updatedAt'
+          ]);
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(contentId)
+          && existing().ownerUid == workspaceId;
       }
 
-      // Leads (PII isolated)
+      // Leads (Key-gated)
       match /leads/{leadId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(leadId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(leadId)
           && isValidLead(incoming(), leadId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(leadId)
           && isValidLead(incoming(), leadId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
           && (
-            isAdmin() ||
             (
               existing().status != 'won' &&
               incoming().diff(existing()).affectedKeys().hasOnly([
@@ -508,52 +462,48 @@ service cloud.firestore {
             ) ||
             incoming().diff(existing()).affectedKeys().hasOnly(['deleted_at', 'updated_at', 'updatedAt'])
           );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(leadId)
+          && existing().ownerUid == workspaceId;
       }
 
-      // Customers (PII isolated)
+      // Customers (Key-gated)
       match /customers/{customerId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(customerId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(customerId)
           && isValidCustomer(incoming(), customerId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(customerId)
           && isValidCustomer(incoming(), customerId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
-          && (
-            isAdmin() ||
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'name', 'phone', 'city', 'firstOrderDate', 'sourceCampaignId',
-              'sourcePlatform', 'totalOrders', 'totalSpent', 'customerType',
-              'notes', 'updated_at', 'deleted_at', 'updatedAt'
-            ])
-          );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'phone', 'city', 'firstOrderDate', 'sourceCampaignId',
+            'sourcePlatform', 'totalOrders', 'totalSpent', 'customerType',
+            'notes', 'updated_at', 'deleted_at', 'updatedAt'
+          ]);
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(customerId)
+          && existing().ownerUid == workspaceId;
       }
 
       // Marketing Orders
       match /orders/{orderId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(orderId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(orderId)
           && isValidOrder(incoming(), orderId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(orderId)
           && isValidOrder(incoming(), orderId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
           && (
-            isAdmin() ||
             (
               existing().status != 'delivered' &&
               existing().status != 'returned' &&
@@ -565,67 +515,61 @@ service cloud.firestore {
             ) ||
             incoming().diff(existing()).affectedKeys().hasOnly(['deleted_at', 'updated_at', 'updatedAt'])
           );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(orderId)
+          && existing().ownerUid == workspaceId;
       }
 
       // Marketing Expenses
       match /expenses/{expenseId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(expenseId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(expenseId)
           && isValidExpense(incoming(), expenseId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(expenseId)
           && isValidExpense(incoming(), expenseId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
-          && (
-            isAdmin() ||
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'title', 'category', 'amount', 'expenseDate', 'campaignId',
-              'paymentMethod', 'notes', 'updated_at', 'deleted_at', 'updatedAt'
-            ])
-          );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'category', 'amount', 'expenseDate', 'campaignId',
+            'paymentMethod', 'notes', 'updated_at', 'deleted_at', 'updatedAt'
+          ]);
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(expenseId)
+          && existing().ownerUid == workspaceId;
       }
 
       // Marketing Plan Items
       match /planItems/{planItemId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(planItemId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(planItemId)
           && isValidPlanItem(incoming(), planItemId, workspaceId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && workspaceExistsAndOwned(workspaceId);
-        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
+        allow update: if isAuthorizedWorkspace(workspaceId) && isValidId(planItemId)
           && isValidPlanItem(incoming(), planItemId, workspaceId)
-          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && existing().ownerUid == workspaceId
           && hasImmutableBaseOnUpdate(workspaceId)
-          && (
-            isAdmin() ||
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'date', 'time', 'title', 'platform', 'campaignId', 'hook',
-              'contentType', 'assignedTo', 'status', 'priority', 'targetGoal',
-              'notes', 'updated_at', 'deleted_at', 'updatedAt'
-            ])
-          );
-        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'date', 'time', 'title', 'platform', 'campaignId', 'hook',
+            'contentType', 'assignedTo', 'status', 'priority', 'targetGoal',
+            'notes', 'updated_at', 'deleted_at', 'updatedAt'
+          ]);
+        allow delete: if isAuthorizedWorkspace(workspaceId) && isValidId(planItemId)
+          && existing().ownerUid == workspaceId;
       }
 
       // Audit Logs (Append-only)
       match /auditLogs/{auditLogId} {
-        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(auditLogId)
-          && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
-        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(auditLogId)
+        allow get: if isAuthorizedWorkspace(workspaceId) && isValidId(auditLogId)
+          && (resource == null || existing().ownerUid == workspaceId);
+        allow list: if isAuthorizedWorkspace(workspaceId) && existing().ownerUid == workspaceId;
+        allow create: if isAuthorizedWorkspace(workspaceId) && isValidId(auditLogId)
           && isValidAuditLog(incoming(), auditLogId, workspaceId)
           && incoming().createdAt == request.time
           && workspaceExistsAndOwned(workspaceId);
