@@ -22,7 +22,15 @@ import { AuditView } from './views/AuditView';
 import { SettingsView } from './views/SettingsView';
 
 const MainLayout: React.FC = () => {
-  const { canEdit, authLoading, firebaseUser, authError, signInWithGoogle, signingIn } = useApp();
+  const {
+    canEdit,
+    authLoading,
+    firebaseUser,
+    authError,
+    signInWithGoogle,
+    signInWithRedirectFallback,
+    signingIn,
+  } = useApp();
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -37,6 +45,7 @@ const MainLayout: React.FC = () => {
         loading={authLoading}
         error={authError}
         onSignIn={signInWithGoogle}
+        onSignInRedirect={signInWithRedirectFallback}
         signingIn={signingIn}
       />
     );

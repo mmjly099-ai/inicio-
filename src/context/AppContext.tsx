@@ -18,6 +18,8 @@ import {
   db,
   googleProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   FirebaseUser,
@@ -55,6 +57,7 @@ interface AppContextType {
   authError: string | null;
   signingIn: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithRedirectFallback: () => Promise<void>;
   logoutUser: () => Promise<void>;
   syncStatus: SyncStatus;
   workspaceId: string | null;
@@ -274,6 +277,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
 
+  const formatAuthError = useCallback((err: unknown): string | null => {
+    const authErr = err as { code?: string; message?: string };
+    const code = authErr?.code || '';
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+    if (code === 'auth/cancelled-popup-request') {
+      return null;
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      return 'تم إغلاق نافذة تسجيل الدخول قبل الإتمام. يمكنك المحاولة مرة أخرى أو استخدام الدخول المباشر للجوال.';
+    }
+    if (code === 'auth/popup-blocked') {
+      return 'المتصفح يحظر النوافذ المنبثقة على هذا الجهاز. استخدم زر "الدخول المباشر للجوال" بالأسفل أو افتح التطبيق في متصفح Chrome.';
+    }
+    if (code === 'auth/unauthorized-domain') {
+      return `النطاق الحالي (${hostname}) غير مضاف ضمن النطاقات المصرح بها في إعدادات Firebase Auth (Authorized Domains).`;
+    }
+    if (code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/web-storage-unsupported') {
+      return 'المتصفح الحالي أو وضع التشغيل لا يدعم نوافذ تسجيل الدخول المنبثقة. افتح التطبيق مباشرة في متصفح Chrome أو استخدم الدخول المباشر.';
+    }
+    if (code === 'auth/network-request-failed') {
+      return 'تعذر الاتصال بخوادم Google. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.';
+    }
+    if (code === 'auth/operation-not-allowed') {
+      return 'تسجيل الدخول عبر Google غير مفعّل في مشروع Firebase الحالي.';
+    }
+    const detail = code || (authErr?.message ? authErr.message.slice(0, 80) : 'خطأ غير معروف');
+    return `تعذر تسجيل الدخول عبر Google (${detail}). جرّب الدخول المباشر للجوال أو افتح التطبيق في متصفح Chrome.`;
+  }, []);
+
+  // Process any pending OAuth redirect result on startup
+  useEffect(() => {
+    let active = true;
+    getRedirectResult(auth).catch(err => {
+      if (!active) return;
+      const formatted = formatAuthError(err);
+      if (formatted) setAuthError(formatted);
+    });
+    return () => {
+      active = false;
+    };
+  }, [formatAuthError]);
+
   // Listen to Firebase Auth state and bootstrap workspace/profile
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async user => {
@@ -402,16 +448,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [firebaseUser, workspaceId, workspaceReady, reportFirestoreError]);
 
+  const signInWithRedirectFallback = async () => {
+    const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+    if (isInIframe) {
+      setAuthError('الدخول المباشر غير متاح داخل نافذة المعاينة المدمجة. اضغط على "فتح في متصفح Chrome" بالأسفل لإتمام الدخول بسهولة.');
+      return;
+    }
+    setSigningIn(true);
+    setAuthError(null);
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err: unknown) {
+      const formatted = formatAuthError(err);
+      if (formatted) setAuthError(formatted);
+      setSigningIn(false);
+    }
+  };
+
   const signInWithGoogle = async () => {
     setSigningIn(true);
     setAuthError(null);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('popup-closed-by-user')) {
-        setAuthError('تعذر تسجيل الدخول عبر Google. يرجى السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.');
+      const code = (err as { code?: string })?.code || '';
+      const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+      // On mobile Chrome / standalone PWA, automatically fall back to redirect when popups are blocked
+      if (
+        !isInIframe &&
+        (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment')
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: unknown) {
+          const formattedRedirect = formatAuthError(redirectErr);
+          if (formattedRedirect) setAuthError(formattedRedirect);
+          return;
+        }
       }
+
+      const formatted = formatAuthError(err);
+      if (formatted) setAuthError(formatted);
     } finally {
       setSigningIn(false);
     }
@@ -1687,6 +1766,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         authError,
         signingIn,
         signInWithGoogle,
+        signInWithRedirectFallback,
         logoutUser,
         syncStatus,
         workspaceId,
