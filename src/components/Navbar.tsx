@@ -3,16 +3,14 @@ import {
   Menu,
   Plus,
   ShieldCheck,
-  UserCheck,
-  Eye,
-  Database,
   Globe,
-  HelpCircle,
-  Check,
-  Layers,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  LogOut,
+  Smartphone,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { UserRole } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
@@ -21,33 +19,47 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntry }) => {
-  const { currentUser, users, switchUserRole, isDemoMode, loadDemoData, clearToEmptyData, canEdit } = useApp();
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
+  const { currentUser, canEdit, syncStatus, logoutUser } = useApp();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
-      case 'admin':
+  const renderSyncBadge = () => {
+    switch (syncStatus) {
+      case 'synced':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            مسؤول (كامل الصلاحيات)
-          </span>
+          <div
+            title="متصل ومتزامن سحابياً عبر جميع أجهزتك"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border bg-emerald-50 text-emerald-800 border-emerald-200"
+          >
+            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden md:inline">مزامنة سحابية نشطة</span>
+            <span className="md:hidden">متزامن</span>
+          </div>
         );
-      case 'marketer':
+      case 'syncing':
+      case 'connecting':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-            <UserCheck className="w-3.5 h-3.5" />
-            مسوق (إدخال وتعديل)
-          </span>
+          <div
+            title="جاري مزامنة البيانات مع السحابة"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border bg-blue-50 text-blue-800 border-blue-200"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+            <span className="hidden md:inline">جاري المزامنة...</span>
+            <span className="md:hidden">مزامنة</span>
+          </div>
         );
-      case 'viewer':
+      case 'offline':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-            <Eye className="w-3.5 h-3.5" />
-            مشاهد (تقارير فقط)
-          </span>
+          <div
+            title="العمل محلياً دون إنترنت — ستتم المزامنة فور عودة الاتصال"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border bg-amber-50 text-amber-800 border-amber-200"
+          >
+            <CloudOff className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden md:inline">حفظ محلي مؤقت</span>
+            <span className="md:hidden">محلي</span>
+          </div>
         );
+      default:
+        return null;
     }
   };
 
@@ -110,133 +122,67 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenQuickEntr
             </button>
           )}
 
-          {/* Demo Mode Toggle Dropdown */}
+          {/* Live Cloud Sync Status */}
+          {renderSyncBadge()}
+
+          {/* Authenticated Google User Profile */}
           <div className="relative">
             <button
               type="button"
-              id="demo-mode-dropdown-btn"
-              onClick={() => setDemoMenuOpen(!demoMenuOpen)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                isDemoMode
-                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
+              id="user-profile-dropdown-btn"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-all cursor-pointer"
             >
-              <Database className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden md:inline">
-                {isDemoMode ? 'وضع تجريبي نشط' : 'نظام فعلي نظيف'}
-              </span>
-              <span className="md:hidden">
-                {isDemoMode ? 'تجريبي' : 'نظيف'}
-              </span>
+              {currentUser.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  referrerPolicy="no-referrer"
+                  className="w-7 h-7 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-lg bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-xs">
+                  {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-slate-900 leading-tight max-w-[120px] truncate">
+                  {currentUser.name}
+                </p>
+                <p className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>حساب متزامن</span>
+                </p>
+              </div>
             </button>
 
-            {demoMenuOpen && (
+            {userMenuOpen && (
               <div
                 className="absolute left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-40 text-right animate-in fade-in duration-150"
                 onClick={e => e.stopPropagation()}
               >
-                <div className="text-xs font-bold text-slate-800 mb-1">
-                  إدارة نمط البيانات
-                </div>
-                <p className="text-[11px] text-slate-500 leading-normal mb-3">
-                  يمكنك التبديل بين البيانات التجريبية الغنية لتفقد كافة الميزات أو البدء بنظام فارغ للإدخال اليدوي الحقيقي.
-                </p>
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      loadDemoData();
-                      setDemoMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isDemoMode ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span>تحميل بيانات تجريبية واقعية</span>
-                    {isDemoMode && <Check className="w-4 h-4 text-amber-600" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearToEmptyData();
-                      setDemoMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      !isDemoMode ? 'bg-blue-50 text-blue-900 border border-blue-200' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span>تفريغ للبيانات الحقيقية (جديد)</span>
-                    {!isDemoMode && <Check className="w-4 h-4 text-blue-600" />}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* User Profile & Role Switcher */}
-          <div className="relative">
-            <button
-              type="button"
-              id="user-role-dropdown-btn"
-              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-              className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-all cursor-pointer"
-            >
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-7 h-7 rounded-lg object-cover"
-              />
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-slate-900 leading-tight">
-                  {currentUser.name}
-                </p>
-                <p className="text-[10px] text-slate-500">
-                  {currentUser.role === 'admin' ? 'مسؤول' : currentUser.role === 'marketer' ? 'مسوق' : 'مشاهد'}
-                </p>
-              </div>
-            </button>
-
-            {roleMenuOpen && (
-              <div
-                className="absolute left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2.5 z-40 text-right animate-in fade-in duration-150"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="px-2 py-1.5 mb-1 border-b border-slate-100">
+                <div className="px-2 py-2 mb-2 border-b border-slate-100">
                   <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
-                  <p className="text-[11px] text-slate-500">{currentUser.email}</p>
+                  <p className="text-[11px] text-slate-500 break-all">{currentUser.email}</p>
                 </div>
 
-                <div className="text-[11px] font-bold text-slate-400 px-2 py-1">
-                  تبديل الصلاحية (للاختبار والمحاكاة):
+                <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-900 mb-2 flex items-start gap-2">
+                  <Smartphone className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span>سجّل الدخول بنفس البريد على أي هاتف أو جهاز لمزامنة جميع بيانات متجرك فوراً.</span>
                 </div>
 
-                <div className="space-y-1">
-                  {(['admin', 'marketer', 'viewer'] as UserRole[]).map(role => (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => {
-                        switchUserRole(role);
-                        setRoleMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition-all cursor-pointer ${
-                        currentUser.role === role ? 'bg-blue-50 font-bold text-blue-900' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        {role === 'admin' && <ShieldCheck className="w-4 h-4 text-purple-600" />}
-                        {role === 'marketer' && <UserCheck className="w-4 h-4 text-blue-600" />}
-                        {role === 'viewer' && <Eye className="w-4 h-4 text-slate-500" />}
-                        <span>
-                          {role === 'admin' ? 'مسؤول (كامل الصلاحيات)' : role === 'marketer' ? 'مسوق (إدخال وتعديل)' : 'مشاهد (استعراض فقط)'}
-                        </span>
-                      </div>
-                      {currentUser.role === role && <Check className="w-4 h-4 text-blue-600" />}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  id="sign-out-btn"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    void logoutUser();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>تسجيل الخروج</span>
+                </button>
               </div>
             )}
           </div>

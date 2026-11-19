@@ -43,7 +43,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpenQuickEntry }) => {
-  const { campaigns, metrics, content, leads, orders, expenses, isDemoMode } = useApp();
+  const { campaigns, metrics, content, leads, orders, expenses } = useApp();
   const [period, setPeriod] = useState<PeriodFilter>('month');
 
   // Filter metrics according to the chosen period

@@ -1,0 +1,540 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User workspace pointer without sensitive PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "activeWorkspaceId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "activeWorkspaceId", "createdAt", "updatedAt"]
+    },
+    "Workspace": {
+      "title": "Workspace",
+      "description": "TOP STORE workspace container owned by the authenticated user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "ownerUid", "storeName", "createdAt", "updatedAt"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Marketing advertising campaign.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 200 },
+        "platform": {
+          "type": "string",
+          "enum": ["instagram", "facebook", "tiktok", "whatsapp", "snapchat", "twitter", "google", "other"]
+        },
+        "objective": {
+          "type": "string",
+          "enum": ["awareness", "messages", "leads", "sales", "retargeting"]
+        },
+        "budget": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 32 },
+        "endDate": { "type": "string", "maxLength": 32 },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "completed", "draft"]
+        },
+        "targetAudience": { "type": "string", "maxLength": 500 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "name",
+        "platform",
+        "objective",
+        "budget",
+        "startDate",
+        "status",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyCampaignMetric": {
+      "title": "DailyCampaignMetric",
+      "description": "Daily advertising performance metric for a campaign.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "campaignId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 32 },
+        "spend": { "type": "number" },
+        "reach": { "type": "number" },
+        "impressions": { "type": "number" },
+        "clicks": { "type": "number" },
+        "messages": { "type": "number" },
+        "leads": { "type": "number" },
+        "newCustomers": { "type": "number" },
+        "orders": { "type": "number" },
+        "revenue": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "campaignId",
+        "date",
+        "spend",
+        "reach",
+        "impressions",
+        "clicks",
+        "messages",
+        "leads",
+        "newCustomers",
+        "orders",
+        "revenue",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ContentItem": {
+      "title": "ContentItem",
+      "description": "Creative video/post performance item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 250 },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "platform": {
+          "type": "string",
+          "enum": ["instagram", "facebook", "tiktok", "whatsapp", "snapchat", "twitter", "google", "other"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["reel", "story", "post", "carousel", "video", "ad", "other"]
+        },
+        "hook": { "type": "string", "maxLength": 1000 },
+        "creator": { "type": "string", "maxLength": 120 },
+        "publishDate": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["draft", "scheduled", "published"] },
+        "views": { "type": "number" },
+        "reach": { "type": "number" },
+        "likes": { "type": "number" },
+        "comments": { "type": "number" },
+        "shares": { "type": "number" },
+        "saves": { "type": "number" },
+        "messages": { "type": "number" },
+        "leads": { "type": "number" },
+        "orders": { "type": "number" },
+        "revenue": { "type": "number" },
+        "url": { "type": "string", "maxLength": 500 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "title",
+        "platform",
+        "type",
+        "hook",
+        "publishDate",
+        "status",
+        "views",
+        "reach",
+        "likes",
+        "comments",
+        "shares",
+        "saves",
+        "messages",
+        "leads",
+        "orders",
+        "revenue",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Potential customer lead.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "platform": {
+          "type": "string",
+          "enum": ["instagram", "facebook", "tiktok", "whatsapp", "snapchat", "twitter", "google", "other"]
+        },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "status": {
+          "type": "string",
+          "enum": ["new", "contacted", "qualified", "opportunity", "won", "lost"]
+        },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "convertedCustomerId": { "type": "string", "maxLength": 128 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "name",
+        "phone",
+        "platform",
+        "status",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Converted paying customer record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "city": { "type": "string", "maxLength": 100 },
+        "firstOrderDate": { "type": "string", "maxLength": 32 },
+        "sourceCampaignId": { "type": "string", "maxLength": 128 },
+        "sourcePlatform": {
+          "type": "string",
+          "enum": ["instagram", "facebook", "tiktok", "whatsapp", "snapchat", "twitter", "google", "other"]
+        },
+        "totalOrders": { "type": "number" },
+        "totalSpent": { "type": "number" },
+        "customerType": { "type": "string", "enum": ["new", "returning"] },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "name",
+        "phone",
+        "firstOrderDate",
+        "sourcePlatform",
+        "totalOrders",
+        "totalSpent",
+        "customerType",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MarketingOrder": {
+      "title": "MarketingOrder",
+      "description": "Marketing attributed sales order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderNumber": { "type": "string", "maxLength": 64 },
+        "customerId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 160 },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "platform": {
+          "type": "string",
+          "enum": ["instagram", "facebook", "tiktok", "whatsapp", "snapchat", "twitter", "google", "other"]
+        },
+        "orderDate": { "type": "string", "maxLength": 32 },
+        "amount": { "type": "number" },
+        "cost": { "type": "number" },
+        "profit": { "type": "number" },
+        "status": { "type": "string", "enum": ["new", "processing", "delivered", "returned"] },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "orderNumber",
+        "customerId",
+        "customerName",
+        "platform",
+        "orderDate",
+        "amount",
+        "status",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MarketingExpense": {
+      "title": "MarketingExpense",
+      "description": "General or campaign-linked marketing expense.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": {
+          "type": "string",
+          "enum": ["paid_ads", "content_design", "tools_software", "influencers", "other"]
+        },
+        "amount": { "type": "number" },
+        "expenseDate": { "type": "string", "maxLength": 32 },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "paymentMethod": { "type": "string", "maxLength": 100 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "title",
+        "category",
+        "amount",
+        "expenseDate",
+        "paymentMethod",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MarketingPlanItem": {
+      "title": "MarketingPlanItem",
+      "description": "Scheduled task or content item on the marketing calendar.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 32 },
+        "time": { "type": "string", "maxLength": 16 },
+        "title": { "type": "string", "maxLength": 250 },
+        "platform": {
+          "type": "string",
+          "enum": ["instagram", "facebook", "tiktok", "whatsapp", "snapchat", "twitter", "google", "other"]
+        },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "hook": { "type": "string", "maxLength": 1000 },
+        "contentType": {
+          "type": "string",
+          "enum": ["reel", "story", "post", "carousel", "video", "ad", "other"]
+        },
+        "assignedTo": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["idea", "in_progress", "ready", "published"] },
+        "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+        "targetGoal": { "type": "string", "maxLength": 250 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "created_by": { "type": "string", "maxLength": 120 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 },
+        "deleted_at": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "date",
+        "title",
+        "platform",
+        "hook",
+        "contentType",
+        "assignedTo",
+        "status",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable audit log entry for marketing actions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workspaceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userName": { "type": "string", "maxLength": 120 },
+        "userRole": { "type": "string", "enum": ["admin", "marketer", "viewer"] },
+        "action": {
+          "type": "string",
+          "enum": ["create", "update", "soft_delete", "restore", "convert_lead", "toggle_demo", "import_backup"]
+        },
+        "targetType": { "type": "string", "maxLength": 80 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "targetTitle": { "type": "string", "maxLength": 250 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "workspaceId",
+        "userName",
+        "userRole",
+        "action",
+        "targetType",
+        "targetId",
+        "targetTitle",
+        "details",
+        "timestamp",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/userProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile pointing to their active TOP STORE workspace."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/Workspace" },
+      "description": "Store workspace root owned by user."
+    },
+    "/workspaces/{workspaceId}/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/Campaign" },
+      "description": "Campaigns inside a workspace."
+    },
+    "/workspaces/{workspaceId}/metrics/{metricId}": {
+      "schema": { "$ref": "#/entities/DailyCampaignMetric" },
+      "description": "Daily campaign metrics inside a workspace."
+    },
+    "/workspaces/{workspaceId}/content/{contentId}": {
+      "schema": { "$ref": "#/entities/ContentItem" },
+      "description": "Creative content items inside a workspace."
+    },
+    "/workspaces/{workspaceId}/leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Leads inside a workspace."
+    },
+    "/workspaces/{workspaceId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customers inside a workspace."
+    },
+    "/workspaces/{workspaceId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/MarketingOrder" },
+      "description": "Marketing orders inside a workspace."
+    },
+    "/workspaces/{workspaceId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/MarketingExpense" },
+      "description": "Marketing expenses inside a workspace."
+    },
+    "/workspaces/{workspaceId}/planItems/{planItemId}": {
+      "schema": { "$ref": "#/entities/MarketingPlanItem" },
+      "description": "Marketing calendar plan items inside a workspace."
+    },
+    "/workspaces/{workspaceId}/auditLogs/{auditLogId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Audit logs inside a workspace."
+    }
+  }
+}

@@ -3,14 +3,13 @@ import {
   Settings,
   Download,
   Upload,
-  Database,
-  ShieldCheck,
+  Cloud,
   Globe,
   FileSpreadsheet,
-  AlertTriangle,
-  RotateCcw,
-  CheckCircle,
   FileJson,
+  Trash2,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -20,24 +19,21 @@ export const SettingsView: React.FC = () => {
   const {
     exportBackupJSON,
     importBackupJSON,
-    loadDemoData,
-    clearToEmptyData,
-    isDemoMode,
+    clearAllWorkspaceData,
+    currentUser,
+    syncStatus,
     campaigns,
     customers,
     leads,
     orders,
-    metrics,
-    expenses,
   } = useApp();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-  const [confirmDemoOpen, setConfirmDemoOpen] = useState(false);
 
   // CSV Export Helpers
-  const exportToCSV = (data: any[], filename: string) => {
+  const exportToCSV = (data: Record<string, unknown>[], filename: string) => {
     if (!data.length) return;
     const headers = Object.keys(data[0]).join(',');
     const rows = data.map(row =>
@@ -60,20 +56,21 @@ export const SettingsView: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = event => {
+    reader.onload = async event => {
       try {
         const content = event.target?.result as string;
-        const success = importBackupJSON(content);
+        const success = await importBackupJSON(content);
         if (success) {
-          setImportStatus('تمت استعادة النسخة الاحتياطية بنجاح.');
+          setImportStatus('تمت استعادة النسخة الاحتياطية ومزامنتها سحابياً بنجاح.');
         } else {
           setImportStatus('خطأ: الملف المرفوع لا يطابق بنية بيانات توب ستور.');
         }
-      } catch (err) {
+      } catch {
         setImportStatus('خطأ في قراءة ملف النسخة الاحتياطية.');
       }
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   return (
@@ -82,10 +79,10 @@ export const SettingsView: React.FC = () => {
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
         <h2 className="text-xl font-extrabold text-slate-950 flex items-center gap-2">
           <Settings className="w-5 h-5 text-blue-600" />
-          <span>الإعدادات والنسخ الاحتياطي وتصدير البيانات</span>
+          <span>الإعدادات والمزامنة السحابية وتصدير البيانات</span>
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          إدارة حفظ واستعادة بيانات TOP STORE محلياً وتصدير ملفات Excel/CSV للحسابات والإداريين.
+          إدارة المزامنة الفورية عبر الهواتف والأجهزة، والنسخ الاحتياطي السحابي، وتصدير ملفات Excel/CSV.
         </p>
       </div>
 
@@ -95,7 +92,7 @@ export const SettingsView: React.FC = () => {
           <button
             type="button"
             onClick={() => setImportStatus(null)}
-            className="text-xs underline text-blue-700"
+            className="text-xs underline text-blue-700 cursor-pointer"
           >
             إغلاق
           </button>
@@ -104,6 +101,38 @@ export const SettingsView: React.FC = () => {
 
       {/* PWA App Install Card */}
       <PWAInstallButton variant="card" />
+
+      {/* Cloud Sync Status Card */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <h3 className="text-base font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+          <Cloud className="w-4 h-4 text-emerald-600" />
+          <span>حالة الحفظ السحابي والمزامنة بين الأجهزة</span>
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
+            <span className="text-emerald-700 block mb-1 font-bold">حالة الاتصال السحابي</span>
+            <span className="font-extrabold text-emerald-950 text-sm flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              {syncStatus === 'offline' ? 'محفوظ محلياً (بانتظار الإنترنت)' : 'متصل ومتزامن لحظياً'}
+            </span>
+          </div>
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-slate-400 block mb-1">الحساب المتزامن</span>
+            <span className="font-extrabold text-slate-900 text-sm break-all">
+              {currentUser.email || currentUser.name}
+            </span>
+          </div>
+          <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100">
+            <span className="text-blue-700 block mb-1 font-bold flex items-center gap-1">
+              <Smartphone className="w-3.5 h-3.5" />
+              مزامنة الهواتف الأخرى
+            </span>
+            <span className="text-slate-700 text-xs font-semibold leading-relaxed block">
+              افتح التطبيق على أي هاتف وسجّل بنفس البريد لمزامنة كل البيانات فوراً.
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Brand Identity Card */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
@@ -140,7 +169,7 @@ export const SettingsView: React.FC = () => {
           <span>النسخ الاحتياطي الكامل للنظام (JSON Backup & Restore)</span>
         </h3>
         <p className="text-xs text-slate-500 mb-4">
-          قم بحفظ نسخة كاملة من كل بياناتك (الحملات، المبيعات، العملاء، النفقات) واستعادتها في أي وقت بضغطة زر.
+          قم بحفظ نسخة إضافية من كل بياناتك (الحملات، المبيعات، العملاء، النفقات) أو استيراد نسخة احتياطية ليتم حفظها في السحابة تلقائياً.
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -187,7 +216,7 @@ export const SettingsView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             type="button"
-            onClick={() => exportToCSV(campaigns.filter(c => !c.deleted_at), 'top_store_campaigns')}
+            onClick={() => exportToCSV(campaigns.filter(c => !c.deleted_at) as unknown as Record<string, unknown>[], 'top_store_campaigns')}
             className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-right cursor-pointer"
           >
             <span className="font-bold text-xs text-slate-800 block">الحملات الإعلانية</span>
@@ -196,7 +225,7 @@ export const SettingsView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => exportToCSV(customers.filter(c => !c.deleted_at), 'top_store_customers')}
+            onClick={() => exportToCSV(customers.filter(c => !c.deleted_at) as unknown as Record<string, unknown>[], 'top_store_customers')}
             className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-right cursor-pointer"
           >
             <span className="font-bold text-xs text-slate-800 block">قاعدة العملاء</span>
@@ -205,7 +234,7 @@ export const SettingsView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => exportToCSV(orders.filter(o => !o.deleted_at), 'top_store_orders')}
+            onClick={() => exportToCSV(orders.filter(o => !o.deleted_at) as unknown as Record<string, unknown>[], 'top_store_orders')}
             className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-right cursor-pointer"
           >
             <span className="font-bold text-xs text-slate-800 block">طلبات التسويق</span>
@@ -214,7 +243,7 @@ export const SettingsView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => exportToCSV(leads.filter(l => !l.deleted_at), 'top_store_leads')}
+            onClick={() => exportToCSV(leads.filter(l => !l.deleted_at) as unknown as Record<string, unknown>[], 'top_store_leads')}
             className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-right cursor-pointer"
           >
             <span className="font-bold text-xs text-slate-800 block">العملاء المحتملون</span>
@@ -223,60 +252,37 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Database Reset / Demo Management */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs">
+      {/* Clear Cloud Data Option */}
+      <div className="bg-white p-5 rounded-2xl border border-rose-200/80 shadow-xs">
         <h3 className="text-base font-extrabold text-slate-900 mb-2 flex items-center gap-2">
-          <Database className="w-4 h-4 text-amber-600" />
-          <span>إدارة وضع البيانات (تجريبي / فعلي نظيف)</span>
+          <Trash2 className="w-4 h-4 text-rose-600" />
+          <span>تصفير بيانات المتجر السحابية</span>
         </h3>
         <p className="text-xs text-slate-500 mb-4">
-          يمكنك إعادة ملء النظام بالبيانات التجريبية الواقعية لاختبار التحليلات، أو تفريغ النظام لبدء تسجيل بيانات حقيقية لـ TOP STORE.
+          في حال رغبتك بحذف كافة الحملات والطلبات والمقاييس الحالية نهائياً للبدء من الصفر عبر جميع أجهزتك.
         </p>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setConfirmDemoOpen(true)}
-            className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold rounded-xl cursor-pointer"
-          >
-            إعادة تحميل البيانات التجريبية الشاملة
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setConfirmClearOpen(true)}
-            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold rounded-xl cursor-pointer"
-          >
-            تفريغ النظام للبدء ببيانات متجرك الحقيقية
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setConfirmClearOpen(true)}
+          className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-bold rounded-xl cursor-pointer"
+        >
+          مسح جميع السجلات الحالية والبدء من الصفر
+        </button>
       </div>
 
       {/* Confirmation for Clear */}
       <ConfirmModal
         isOpen={confirmClearOpen}
-        title="تأكيد تفريغ النظام لبدء العمل الفعلي"
-        message="هل أنت متأكد من تفريغ كافة البيانات التجريبية؟ سيصبح النظام نظيفاً وجاهزاً لإدخال بيانات توب ستور الحقيقية."
-        confirmLabel="نعم، تفريغ النظام"
+        title="تأكيد مسح كافة البيانات السحابية"
+        message="سيتم حذف جميع الحملات والمبيعات والعملاء والمحتوى والمصروفات من قاعدة البيانات السحابية في جميع أجهزتك. يفضل تنزيل نسخة احتياطية JSON أولاً."
+        confirmLabel="نعم، مسح الكل والبدء من الصفر"
         isDestructive={true}
         onConfirm={() => {
-          clearToEmptyData();
+          void clearAllWorkspaceData();
           setConfirmClearOpen(false);
         }}
         onCancel={() => setConfirmClearOpen(false)}
-      />
-
-      {/* Confirmation for Demo Reload */}
-      <ConfirmModal
-        isOpen={confirmDemoOpen}
-        title="إعادة تحميل البيانات التجريبية"
-        message="سيؤدي هذا الإجراء إلى استبدال البيانات الحالية بمجموعة غنية من بيانات الحملات والمقاييس التجريبية."
-        confirmLabel="تحميل البيانات التجريبية"
-        onConfirm={() => {
-          loadDemoData();
-          setConfirmDemoOpen(false);
-        }}
-        onCancel={() => setConfirmDemoOpen(false)}
       />
     </div>
   );

@@ -5,6 +5,8 @@ import { Sidebar, PageId } from './components/Sidebar';
 import { QuickDataEntryModal, QuickEntryTab } from './components/QuickDataEntryModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { AuthGate } from './components/AuthGate';
 
 // Views
 import { DashboardView } from './views/DashboardView';
@@ -20,7 +22,7 @@ import { AuditView } from './views/AuditView';
 import { SettingsView } from './views/SettingsView';
 
 const MainLayout: React.FC = () => {
-  const { canEdit } = useApp();
+  const { canEdit, authLoading, firebaseUser, authError, signInWithGoogle, signingIn } = useApp();
   const [currentPage, setCurrentPage] = useState<PageId>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -28,6 +30,17 @@ const MainLayout: React.FC = () => {
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
   const [quickEntryTab, setQuickEntryTab] = useState<QuickEntryTab>('daily_metric');
   const [preselectedCampaignId, setPreselectedCampaignId] = useState<string | undefined>(undefined);
+
+  if (authLoading || !firebaseUser) {
+    return (
+      <AuthGate
+        loading={authLoading}
+        error={authError}
+        onSignIn={signInWithGoogle}
+        signingIn={signingIn}
+      />
+    );
+  }
 
   const handleOpenQuickEntry = (tab: QuickEntryTab = 'daily_metric', campaignId?: string) => {
     setQuickEntryTab(tab);
@@ -154,8 +167,10 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainLayout />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <MainLayout />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

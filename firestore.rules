@@ -1,0 +1,636 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net: Deny all by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Primitive Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'malkamynaldyny@gmail.com';
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalString(data, key, maxLen) {
+      return !(key in data) || data[key] == null || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isOptionalNumber(data, key) {
+      return !(key in data) || data[key] == null || data[key] is number;
+    }
+
+    function isValidPlatform(p) {
+      return p in ['instagram', 'facebook', 'tiktok', 'whatsapp', 'snapchat', 'twitter', 'google', 'other'];
+    }
+
+    function isValidContentType(t) {
+      return t in ['reel', 'story', 'post', 'carousel', 'video', 'ad', 'other'];
+    }
+
+    function hasValidBaseOwnership(data, docId, workspaceId) {
+      return isValidId(docId)
+        && data.id == docId
+        && isValidId(workspaceId)
+        && data.workspaceId == workspaceId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid;
+    }
+
+    function workspaceExistsAndOwned(workspaceId) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId))
+        && get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerUid == request.auth.uid;
+    }
+
+    function hasImmutableBaseOnUpdate(workspaceId) {
+      return incoming().id == existing().id
+        && incoming().workspaceId == existing().workspaceId
+        && incoming().workspaceId == workspaceId
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().created_at == existing().created_at
+        && incoming().created_by == existing().created_by
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'activeWorkspaceId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'activeWorkspaceId', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && isValidString(data.displayName, 1, 120)
+        && isValidId(data.activeWorkspaceId);
+    }
+
+    function isValidWorkspace(data, workspaceId) {
+      return data.keys().hasAll(['id', 'ownerUid', 'storeName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'ownerUid', 'storeName', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == workspaceId
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && isValidString(data.storeName, 1, 120);
+    }
+
+    function isValidCampaign(data, campaignId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'name', 'platform', 'objective',
+          'budget', 'startDate', 'status', 'created_by', 'created_at', 'updated_at',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'name', 'platform', 'objective',
+          'budget', 'startDate', 'endDate', 'status', 'targetAudience', 'notes',
+          'created_by', 'created_at', 'updated_at', 'deleted_at', 'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, campaignId, workspaceId)
+        && isValidString(data.name, 1, 200)
+        && isValidPlatform(data.platform)
+        && data.objective in ['awareness', 'messages', 'leads', 'sales', 'retargeting']
+        && data.budget is number && data.budget >= 0
+        && isValidString(data.startDate, 1, 32)
+        && isOptionalString(data, 'endDate', 32)
+        && data.status in ['active', 'paused', 'completed', 'draft']
+        && isOptionalString(data, 'targetAudience', 500)
+        && isOptionalString(data, 'notes', 2000)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidMetric(data, metricId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'campaignId', 'date', 'spend', 'reach',
+          'impressions', 'clicks', 'messages', 'leads', 'newCustomers', 'orders',
+          'revenue', 'created_by', 'created_at', 'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'campaignId', 'date', 'spend', 'reach',
+          'impressions', 'clicks', 'messages', 'leads', 'newCustomers', 'orders',
+          'revenue', 'notes', 'created_by', 'created_at', 'updated_at', 'deleted_at',
+          'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, metricId, workspaceId)
+        && isValidId(data.campaignId)
+        && isValidString(data.date, 1, 32)
+        && data.spend is number && data.spend >= 0
+        && data.reach is number && data.reach >= 0
+        && data.impressions is number && data.impressions >= 0
+        && data.clicks is number && data.clicks >= 0
+        && data.messages is number && data.messages >= 0
+        && data.leads is number && data.leads >= 0
+        && data.newCustomers is number && data.newCustomers >= 0
+        && data.orders is number && data.orders >= 0
+        && data.revenue is number && data.revenue >= 0
+        && isOptionalString(data, 'notes', 2000)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidContentItem(data, contentId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'title', 'platform', 'type', 'hook',
+          'publishDate', 'status', 'views', 'reach', 'likes', 'comments',
+          'shares', 'saves', 'messages', 'leads', 'orders', 'revenue',
+          'created_by', 'created_at', 'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'title', 'campaignId', 'platform', 'type',
+          'hook', 'creator', 'publishDate', 'status', 'views', 'reach', 'likes',
+          'comments', 'shares', 'saves', 'messages', 'leads', 'orders', 'revenue',
+          'url', 'created_by', 'created_at', 'updated_at', 'deleted_at',
+          'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, contentId, workspaceId)
+        && isValidString(data.title, 1, 250)
+        && isOptionalString(data, 'campaignId', 128)
+        && isValidPlatform(data.platform)
+        && isValidContentType(data.type)
+        && isValidString(data.hook, 0, 1000)
+        && isOptionalString(data, 'creator', 120)
+        && isValidString(data.publishDate, 1, 32)
+        && data.status in ['draft', 'scheduled', 'published']
+        && data.views is number && data.views >= 0
+        && data.reach is number && data.reach >= 0
+        && data.likes is number && data.likes >= 0
+        && data.comments is number && data.comments >= 0
+        && data.shares is number && data.shares >= 0
+        && data.saves is number && data.saves >= 0
+        && data.messages is number && data.messages >= 0
+        && data.leads is number && data.leads >= 0
+        && data.orders is number && data.orders >= 0
+        && data.revenue is number && data.revenue >= 0
+        && isOptionalString(data, 'url', 500)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidLead(data, leadId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'name', 'phone', 'platform',
+          'status', 'created_by', 'created_at', 'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'name', 'phone', 'platform',
+          'campaignId', 'status', 'notes', 'convertedCustomerId',
+          'created_by', 'created_at', 'updated_at', 'deleted_at', 'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, leadId, workspaceId)
+        && isValidString(data.name, 1, 160)
+        && isValidString(data.phone, 1, 40)
+        && isValidPlatform(data.platform)
+        && isOptionalString(data, 'campaignId', 128)
+        && data.status in ['new', 'contacted', 'qualified', 'opportunity', 'won', 'lost']
+        && isOptionalString(data, 'notes', 2000)
+        && isOptionalString(data, 'convertedCustomerId', 128)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidCustomer(data, customerId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'name', 'phone', 'firstOrderDate',
+          'sourcePlatform', 'totalOrders', 'totalSpent', 'customerType',
+          'created_by', 'created_at', 'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'name', 'phone', 'city', 'firstOrderDate',
+          'sourceCampaignId', 'sourcePlatform', 'totalOrders', 'totalSpent',
+          'customerType', 'notes', 'created_by', 'created_at', 'updated_at',
+          'deleted_at', 'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, customerId, workspaceId)
+        && isValidString(data.name, 1, 160)
+        && isValidString(data.phone, 1, 40)
+        && isOptionalString(data, 'city', 100)
+        && isValidString(data.firstOrderDate, 1, 32)
+        && isOptionalString(data, 'sourceCampaignId', 128)
+        && isValidPlatform(data.sourcePlatform)
+        && data.totalOrders is number && data.totalOrders >= 0
+        && data.totalSpent is number && data.totalSpent >= 0
+        && data.customerType in ['new', 'returning']
+        && isOptionalString(data, 'notes', 2000)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidOrder(data, orderId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'orderNumber', 'customerId',
+          'customerName', 'platform', 'orderDate', 'amount', 'status',
+          'created_by', 'created_at', 'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'orderNumber', 'customerId',
+          'customerName', 'campaignId', 'platform', 'orderDate', 'amount',
+          'cost', 'profit', 'status', 'notes', 'created_by', 'created_at',
+          'updated_at', 'deleted_at', 'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, orderId, workspaceId)
+        && isValidString(data.orderNumber, 1, 64)
+        && isValidId(data.customerId)
+        && isValidString(data.customerName, 1, 160)
+        && isOptionalString(data, 'campaignId', 128)
+        && isValidPlatform(data.platform)
+        && isValidString(data.orderDate, 1, 32)
+        && data.amount is number && data.amount >= 0
+        && isOptionalNumber(data, 'cost')
+        && isOptionalNumber(data, 'profit')
+        && data.status in ['new', 'processing', 'delivered', 'returned']
+        && isOptionalString(data, 'notes', 2000)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidExpense(data, expenseId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'title', 'category', 'amount',
+          'expenseDate', 'paymentMethod', 'created_by', 'created_at',
+          'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'title', 'category', 'amount',
+          'expenseDate', 'campaignId', 'paymentMethod', 'notes', 'created_by',
+          'created_at', 'updated_at', 'deleted_at', 'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, expenseId, workspaceId)
+        && isValidString(data.title, 1, 200)
+        && data.category in ['paid_ads', 'content_design', 'tools_software', 'influencers', 'other']
+        && data.amount is number && data.amount >= 0
+        && isValidString(data.expenseDate, 1, 32)
+        && isOptionalString(data, 'campaignId', 128)
+        && isValidString(data.paymentMethod, 1, 100)
+        && isOptionalString(data, 'notes', 2000)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidPlanItem(data, planItemId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'date', 'title', 'platform',
+          'hook', 'contentType', 'assignedTo', 'status', 'created_by',
+          'created_at', 'updated_at', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'date', 'time', 'title', 'platform',
+          'campaignId', 'hook', 'contentType', 'assignedTo', 'status', 'priority',
+          'targetGoal', 'notes', 'created_by', 'created_at', 'updated_at',
+          'deleted_at', 'createdAt', 'updatedAt'
+        ])
+        && hasValidBaseOwnership(data, planItemId, workspaceId)
+        && isValidString(data.date, 1, 32)
+        && isOptionalString(data, 'time', 16)
+        && isValidString(data.title, 1, 250)
+        && isValidPlatform(data.platform)
+        && isOptionalString(data, 'campaignId', 128)
+        && isValidString(data.hook, 0, 1000)
+        && isValidContentType(data.contentType)
+        && isValidString(data.assignedTo, 1, 120)
+        && data.status in ['idea', 'in_progress', 'ready', 'published']
+        && (!('priority' in data) || data.priority == null || data.priority in ['high', 'medium', 'low'])
+        && isOptionalString(data, 'targetGoal', 250)
+        && isOptionalString(data, 'notes', 2000)
+        && isValidString(data.created_by, 1, 120)
+        && isValidString(data.created_at, 1, 64)
+        && isValidString(data.updated_at, 1, 64)
+        && isOptionalString(data, 'deleted_at', 64);
+    }
+
+    function isValidAuditLog(data, auditLogId, workspaceId) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'workspaceId', 'userName', 'userRole', 'action',
+          'targetType', 'targetId', 'targetTitle', 'details', 'timestamp', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'ownerUid', 'workspaceId', 'userName', 'userRole', 'action',
+          'targetType', 'targetId', 'targetTitle', 'details', 'timestamp', 'createdAt'
+        ])
+        && hasValidBaseOwnership(data, auditLogId, workspaceId)
+        && isValidString(data.userName, 1, 120)
+        && data.userRole in ['admin', 'marketer', 'viewer']
+        && data.action in ['create', 'update', 'soft_delete', 'restore', 'convert_lead', 'toggle_demo', 'import_backup']
+        && isValidString(data.targetType, 1, 80)
+        && isValidString(data.targetId, 1, 128)
+        && isValidString(data.targetTitle, 1, 250)
+        && isValidString(data.details, 1, 1000)
+        && isValidString(data.timestamp, 1, 64);
+    }
+
+    // 4. Connection check endpoint (get-only, no list/write)
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // 5. User Profile pointer (Strictly owner or verified admin)
+    match /userProfiles/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (userId == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (existing().uid == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && existing().uid == request.auth.uid
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'activeWorkspaceId', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // 6. Workspaces & Nested Marketing Collections
+    match /workspaces/{workspaceId} {
+      allow get: if isVerifiedUser() && isValidId(workspaceId) && (existing().ownerUid == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(workspaceId)
+        && workspaceId == request.auth.uid
+        && isValidWorkspace(incoming(), workspaceId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(workspaceId)
+        && isValidWorkspace(incoming(), workspaceId)
+        && (existing().ownerUid == request.auth.uid || isAdmin())
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['storeName', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(workspaceId);
+
+      // Campaigns
+      match /campaigns/{campaignId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
+          && isValidCampaign(incoming(), campaignId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
+          && isValidCampaign(incoming(), campaignId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            (
+              existing().status != 'completed' &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name', 'platform', 'objective', 'budget', 'startDate', 'endDate',
+                'status', 'targetAudience', 'notes', 'updated_at', 'deleted_at', 'updatedAt'
+              ])
+            ) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['deleted_at', 'updated_at', 'updatedAt'])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(campaignId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Daily Metrics
+      match /metrics/{metricId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
+          && isValidMetric(incoming(), metricId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
+          && isValidMetric(incoming(), metricId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'campaignId', 'date', 'spend', 'reach', 'impressions', 'clicks',
+              'messages', 'leads', 'newCustomers', 'orders', 'revenue', 'notes',
+              'updated_at', 'deleted_at', 'updatedAt'
+            ])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(metricId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Content Items
+      match /content/{contentId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
+          && isValidContentItem(incoming(), contentId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
+          && isValidContentItem(incoming(), contentId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'campaignId', 'platform', 'type', 'hook', 'creator',
+              'publishDate', 'status', 'views', 'reach', 'likes', 'comments',
+              'shares', 'saves', 'messages', 'leads', 'orders', 'revenue', 'url',
+              'updated_at', 'deleted_at', 'updatedAt'
+            ])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(contentId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Leads (PII isolated)
+      match /leads/{leadId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
+          && isValidLead(incoming(), leadId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
+          && isValidLead(incoming(), leadId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            (
+              existing().status != 'won' &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name', 'phone', 'platform', 'campaignId', 'status', 'notes',
+                'convertedCustomerId', 'updated_at', 'deleted_at', 'updatedAt'
+              ])
+            ) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['deleted_at', 'updated_at', 'updatedAt'])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(leadId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Customers (PII isolated)
+      match /customers/{customerId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
+          && isValidCustomer(incoming(), customerId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
+          && isValidCustomer(incoming(), customerId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'phone', 'city', 'firstOrderDate', 'sourceCampaignId',
+              'sourcePlatform', 'totalOrders', 'totalSpent', 'customerType',
+              'notes', 'updated_at', 'deleted_at', 'updatedAt'
+            ])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(customerId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Marketing Orders
+      match /orders/{orderId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
+          && isValidOrder(incoming(), orderId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
+          && isValidOrder(incoming(), orderId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            (
+              existing().status != 'delivered' &&
+              existing().status != 'returned' &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'orderNumber', 'customerId', 'customerName', 'campaignId',
+                'platform', 'orderDate', 'amount', 'cost', 'profit', 'status',
+                'notes', 'updated_at', 'deleted_at', 'updatedAt'
+              ])
+            ) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['deleted_at', 'updated_at', 'updatedAt'])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(orderId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Marketing Expenses
+      match /expenses/{expenseId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
+          && isValidExpense(incoming(), expenseId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
+          && isValidExpense(incoming(), expenseId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'category', 'amount', 'expenseDate', 'campaignId',
+              'paymentMethod', 'notes', 'updated_at', 'deleted_at', 'updatedAt'
+            ])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(expenseId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Marketing Plan Items
+      match /planItems/{planItemId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
+          && isValidPlanItem(incoming(), planItemId, workspaceId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
+          && isValidPlanItem(incoming(), planItemId, workspaceId)
+          && (existing().ownerUid == request.auth.uid || isAdmin())
+          && hasImmutableBaseOnUpdate(workspaceId)
+          && (
+            isAdmin() ||
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'date', 'time', 'title', 'platform', 'campaignId', 'hook',
+              'contentType', 'assignedTo', 'status', 'priority', 'targetGoal',
+              'notes', 'updated_at', 'deleted_at', 'updatedAt'
+            ])
+          );
+        allow delete: if isVerifiedUser() && isValidId(workspaceId) && isValidId(planItemId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+      }
+
+      // Audit Logs (Append-only)
+      match /auditLogs/{auditLogId} {
+        allow get: if isVerifiedUser() && isValidId(workspaceId) && isValidId(auditLogId)
+          && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow list: if isVerifiedUser() && (existing().ownerUid == request.auth.uid || isAdmin());
+        allow create: if isVerifiedUser() && isValidId(workspaceId) && isValidId(auditLogId)
+          && isValidAuditLog(incoming(), auditLogId, workspaceId)
+          && incoming().createdAt == request.time
+          && workspaceExistsAndOwned(workspaceId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}
